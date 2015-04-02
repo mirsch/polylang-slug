@@ -158,3 +158,38 @@ function polylang_slug_posts_join_filter( $join, $query ) {
 	return $join;
 }
 add_filter( 'posts_join', 'polylang_slug_posts_join_filter', 10, 2 );
+
+/**
+ * Filter pre_get_posts to select page in current language
+ *
+ * @param WP_Query $query
+ */
+function polylang_slug_pre_get_posts( $query ) {
+    if ( !empty($query->query_vars['pagename']) ) {
+        $page = get_page_by_path($query->query_vars['pagename']);
+        $t_page = pll_get_post($page->ID, pll_current_language());
+        if ($t_page !== null) {
+            $query->query_vars['page_id'] = $t_page;
+        }
+    }
+}
+add_filter( 'pre_get_posts', 'polylang_slug_pre_get_posts', 15 );
+
+/**
+ * Extend the rewrite_rules for pages to add lang parameter
+ *
+ * @param array $rules
+ * @return array
+ */
+function polylang_slug_rewrite_rules( $rules ) {
+    foreach($rules as $k => $v) {
+        if ($v == 'index.php?pagename=$matches[2]&page=$matches[3]') { // the language rule added by polylang e.g. [(en)/(.?.+?)(/[0-9]+)?/?$] => index.php?pagename=$matches[2]&page=$matches[3]
+            $rules[$k] = $v.'&lang=$matches[1]';
+        }
+        if ($v == 'index.php?pagename=$matches[1]&page=$matches[2]') { // the default rule [(.?.+?)(/[0-9]+)?/?$] => index.php?pagename=$matches[1]&page=$matches[2]
+            $rules[$k] = $v.'&lang='.pll_default_language();
+        }
+    }
+    return $rules;
+}
+add_filter( 'page_rewrite_rules', 'polylang_slug_rewrite_rules', 15 );
